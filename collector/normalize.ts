@@ -31,7 +31,8 @@ export function normalizeAircraft(raw: RawAircraft): Aircraft | null {
 
   return {
     hex: hex.toLowerCase(),
-    callsign: str(raw.flight),
+    // readsb fills unreadable callsign characters with '@'.
+    callsign: str(raw.flight?.replace(/@/g, '')),
     registration: str(raw.r),
     typeCode: str(raw.t),
     category: str(raw.category),

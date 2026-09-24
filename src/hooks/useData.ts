@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Meta, Snapshot, Trails } from '../../shared/model.ts';
 import { ApiError, fetchMeta, fetchSnapshot, fetchTrails } from '../api/client.ts';
 
-/** The collector publishes every ~5 minutes; checking more often than this only finds the same data. */
-export const POLL_INTERVAL_MS = 60_000;
+/** The collector publishes every ~5 minutes; a 30 s check shows each deploy soon after it lands. */
+export const POLL_INTERVAL_MS = 30_000;
 
 const describe = (err: unknown) =>
   err instanceof ApiError && err.status === 404

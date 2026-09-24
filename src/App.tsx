@@ -10,8 +10,8 @@ import { useHashParams } from './hooks/useHashParams.ts';
 import { applyFilters, DEFAULT_FILTERS, sortAircraft, type Filters, type SortKey } from './lib/filters.ts';
 import { formatAge } from './lib/format.ts';
 
-/** Data older than this is flagged; the collector normally publishes every 5–15 minutes. */
-const STALE_AFTER_MS = 30 * 60_000;
+/** Data older than this is flagged; the collector normally publishes every ~5 minutes. */
+const STALE_AFTER_MS = 15 * 60_000;
 
 function useNow(intervalMs: number) {
   const [now, setNow] = useState(Date.now);
