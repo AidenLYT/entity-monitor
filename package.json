@@ -1,5 +1,5 @@
 {
-  "name": "entity-monitor",
+  "name": "flight-monitor",
   "version": "0.1.0",
   "private": true,
   "description": "Live flight monitoring dashboard on GitHub Pages, fed by an Actions-driven ADS-B data pipeline",

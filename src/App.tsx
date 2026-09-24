@@ -50,7 +50,7 @@ export function App() {
   if (!meta || !region) {
     return (
       <div className="splash">
-        <h1>Entity Monitor</h1>
+        <h1>Flight Monitor</h1>
         <p>{metaError ? `Could not load flight data: ${metaError}` : 'Loading flight data…'}</p>
       </div>
     );
@@ -61,7 +61,7 @@ export function App() {
       <header className="topbar">
         <h1 className="brand">
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={22} height={22} />
-          Entity Monitor
+          Flight Monitor
         </h1>
         <label className="region-picker">
           <span className="visually-hidden">Region</span>
@@ -97,7 +97,7 @@ export function App() {
         <footer className="credits">
           Flight data from <a href="https://adsb.lol">adsb.lol</a> under{' '}
           <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>, refreshed by{' '}
-          <a href="https://github.com/AidenLYT/entity-monitor">a scheduled GitHub Action</a>.
+          <a href="https://github.com/AidenLYT/flight-monitor">a scheduled GitHub Action</a>.
         </footer>
       </div>
 

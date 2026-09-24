@@ -1,9 +1,9 @@
-# Entity Monitor
+# Flight Monitor
 
 A live flight-monitoring dashboard that runs entirely on GitHub: a scheduled GitHub Actions
 workflow acts as the backend, and GitHub Pages serves both the web app and a static JSON API.
 
-**Live site:** https://aidenlyt.github.io/entity-monitor/
+**Live site:** https://aidenlyt.github.io/flight-monitor/
 
 - **Live map** of aircraft in six preset regions (London, Frankfurt, New York, Los Angeles,
   Singapore, and worldwide military), rotated by heading and coloured by altitude.
