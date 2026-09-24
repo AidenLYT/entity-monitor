@@ -1,0 +1,13 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "entity-monitor-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-20",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://aidenlyt.github.io,http://localhost:5173,http://localhost:4173",
+    // Each region is fetched from adsb.lol at most once per this many seconds per isolate.
+    "CACHE_TTL_SEC": "5"
+  }
+}

@@ -6,6 +6,6 @@ export default defineConfig({
   base: './',
   plugins: [react()],
   test: {
-    include: ['{src,collector,shared}/**/*.test.ts'],
+    include: ['{src,collector,shared,relay}/**/*.test.ts'],
   },
 });
