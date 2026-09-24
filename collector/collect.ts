@@ -8,7 +8,7 @@ import {
 } from '../shared/model.ts';
 import { SOURCE, type FetchRegion } from './adsblol.ts';
 import { toSnapshot } from './normalize.ts';
-import { mergeTrails } from './trails.ts';
+import { mergeTrails } from '../shared/trails.ts';
 
 /** What the last deployed site published for a region; either part may be missing. */
 export interface PreviousRegionData {

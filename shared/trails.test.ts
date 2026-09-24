@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Aircraft, Snapshot } from '../shared/model.ts';
+import type { Aircraft, Snapshot } from './model.ts';
 import { mergeTrails } from './trails.ts';
 
 const T0 = 1_790_000_000; // epoch seconds
@@ -49,6 +49,14 @@ describe('mergeTrails', () => {
     const first = mergeTrails({}, snapshot(T0, [aircraft('a', 51, 0)]));
     expect(mergeTrails(first, snapshot(T0, [aircraft('a', 52, 0)])).a).toHaveLength(1);
     expect(mergeTrails(first, snapshot(T0 + 60, [aircraft('a', 51, 0)])).a).toHaveLength(1);
+  });
+
+  it('thins points closer together than minSpacingSec', () => {
+    let trails = mergeTrails({}, snapshot(T0, [aircraft('a', 51, 0)]));
+    trails = mergeTrails(trails, snapshot(T0 + 5, [aircraft('a', 51.01, 0)]), { minSpacingSec: 20 });
+    expect(trails.a).toHaveLength(1);
+    trails = mergeTrails(trails, snapshot(T0 + 25, [aircraft('a', 51.05, 0)]), { minSpacingSec: 20 });
+    expect(trails.a).toHaveLength(2);
   });
 
   it('keeps trails of aircraft missing from the snapshot until they expire', () => {
