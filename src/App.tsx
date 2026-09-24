@@ -7,6 +7,7 @@ import { FlightMap } from './components/FlightMap.tsx';
 import { Legend } from './components/Legend.tsx';
 import { useMeta, useRegionData } from './hooks/useData.ts';
 import { useHashParams } from './hooks/useHashParams.ts';
+import { useLiveSnapshot, useLiveTrails, type LiveStatus } from './hooks/useLive.ts';
 import { applyFilters, DEFAULT_FILTERS, sortAircraft, type Filters, type SortKey } from './lib/filters.ts';
 import { formatAge } from './lib/format.ts';
 
@@ -26,12 +27,20 @@ export function App() {
   const [params, setParams] = useHashParams<'region' | 'hex'>();
   const { meta, error: metaError } = useMeta();
   const region = meta?.regions.find((r) => r.id === params.region) ?? meta?.regions[0] ?? null;
-  const { snapshot, trails, error: regionError } = useRegionData(region?.id ?? null, meta?.generatedAt ?? null);
+  const regionId = region?.id ?? null;
+  const { snapshot: deployed, trails: deployedTrails, error: regionError } = useRegionData(regionId, meta?.generatedAt ?? null);
+  const { live, status: liveStatus } = useLiveSnapshot(regionId);
+
+  // Show whichever is newer: the live feed normally, the deployed snapshot until it connects.
+  const liveFeed = live && live.snapshot.regionId === regionId ? live : null;
+  const shownLive = liveFeed && (!deployed || liveFeed.snapshot.sourceTime >= deployed.sourceTime) ? liveFeed : null;
+  const snapshot = shownLive ? shownLive.snapshot : deployed;
+  const trails = useLiveTrails(regionId, deployedTrails, liveFeed?.snapshot ?? null);
+  const projectFrom = shownLive?.fetchedAtLocal ?? null;
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sortKey, setSortKey] = useState<SortKey>('callsign');
   const [showAllTrails, setShowAllTrails] = useState(false);
-  const now = useNow(30_000);
 
   const allAircraft = useMemo(() => snapshot?.aircraft ?? [], [snapshot]);
   const filtered = useMemo(() => applyFilters(allAircraft, filters), [allAircraft, filters]);
@@ -76,7 +85,14 @@ export function App() {
             ))}
           </select>
         </label>
-        <DataStatus meta={meta} regionId={region.id} sourceTime={snapshot?.sourceTime ?? null} now={now} error={regionError ?? metaError} />
+        <DataStatus
+          meta={meta}
+          regionId={region.id}
+          liveStatus={liveStatus}
+          liveReceivedAt={shownLive?.receivedAt ?? null}
+          sourceTime={snapshot?.sourceTime ?? null}
+          error={regionError ?? metaError}
+        />
       </header>
 
       <div className="sidebar">
@@ -96,7 +112,8 @@ export function App() {
         />
         <footer className="credits">
           Flight data from <a href="https://adsb.lol">adsb.lol</a> under{' '}
-          <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>, refreshed by{' '}
+          <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>, streamed through a Cloudflare Worker
+          relay, with snapshots and trails from{' '}
           <a href="https://github.com/AidenLYT/entity-monitor">a scheduled GitHub Action</a>.
         </footer>
       </div>
@@ -104,9 +121,10 @@ export function App() {
       <main className="map-wrap">
         <FlightMap
           region={region}
-          sourceTime={snapshot?.sourceTime ?? now}
+          sourceTime={snapshot?.sourceTime ?? 0}
+          projectFrom={projectFrom}
           aircraft={filtered}
-          trails={trails?.trails ?? null}
+          trails={trails}
           showAllTrails={showAllTrails}
           selected={selected}
           onSelect={select}
@@ -117,7 +135,7 @@ export function App() {
           <AircraftDetails
             hex={selectedHex}
             aircraft={selected}
-            trail={trails?.trails[selectedHex]}
+            trail={trails?.[selectedHex]}
             onClose={() => select(null)}
           />
         )}
@@ -129,28 +147,47 @@ export function App() {
 function DataStatus({
   meta,
   regionId,
+  liveStatus,
+  liveReceivedAt,
   sourceTime,
-  now,
   error,
 }: {
   meta: Meta;
   regionId: string;
+  liveStatus: LiveStatus;
+  liveReceivedAt: number | null;
   sourceTime: number | null;
-  now: number;
   error: string | null;
 }) {
+  // Ticks here rather than in App so only this line re-renders every second.
+  const now = useNow(liveReceivedAt !== null ? 1_000 : 30_000);
+
+  if (liveReceivedAt !== null && liveStatus === 'live') {
+    const secs = Math.max(0, Math.round((now - liveReceivedAt) / 1000));
+    return (
+      <div className="status is-live" role="status">
+        <span className="status-dot" aria-hidden="true" />
+        <span>
+          <strong>Live</strong> · updated {secs < 2 ? 'just now' : `${secs} s ago`}
+        </span>
+      </div>
+    );
+  }
+
   const status = meta.regions.find((r) => r.id === regionId)?.status;
   const age = sourceTime ? now - sourceTime : null;
   const stale = age !== null && age > STALE_AFTER_MS;
+  const liveNote =
+    liveStatus === 'reconnecting' ? 'live feed unavailable, retrying' : liveStatus === 'connecting' ? 'connecting to live feed…' : null;
   const warning = error ?? (status && !status.fresh ? 'Upstream was unavailable on the last update' : null);
+  const note = warning ?? liveNote ?? (stale ? 'updates may be delayed' : null);
 
   return (
-    <div className={`status${stale || warning ? ' is-warning' : ''}`} role="status">
+    <div className={`status${stale || warning || liveStatus === 'reconnecting' ? ' is-warning' : ''}`} role="status">
       <span className="status-dot" aria-hidden="true" />
       <span>
         {age === null ? 'No data yet' : `Data from ${formatAge(age)}`}
-        {warning && <span className="status-note"> · {warning}</span>}
-        {!warning && stale && <span className="status-note"> · updates may be delayed</span>}
+        {note && <span className="status-note"> · {note}</span>}
       </span>
     </div>
   );

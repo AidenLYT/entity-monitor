@@ -135,6 +135,26 @@ select {
   box-shadow: 0 0 0 3px rgb(22 163 74 / 0.2);
 }
 
+.status.is-live {
+  color: var(--text);
+}
+
+.status.is-live .status-dot {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgb(22 163 74 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status.is-live .status-dot {
+    animation: none;
+  }
+}
+
 .status.is-warning .status-dot {
   background: var(--warning);
   box-shadow: 0 0 0 3px rgb(180 83 9 / 0.2);
