@@ -1,0 +1,58 @@
+# The "backend": every run polls adsb.lol, continues trails from the live site's data,
+# and deploys the web app plus a fresh static JSON API to GitHub Pages.
+name: Collect & deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # GitHub may delay scheduled runs, especially at the top of the hour.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two collectors at once; a newer queued run replaces an older queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - id: pages
+        uses: actions/configure-pages@v6
+      - run: npm run build
+      - name: Collect flight data
+        run: npm run collect -- --out dist
+        env:
+          PREVIOUS_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          SAMPLES: 2
+          SAMPLE_INTERVAL_SEC: 90
+          # adsb.lol throttles bursts; 8s spacing avoided 429s in testing.
+          REQUEST_GAP_SEC: 8
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
