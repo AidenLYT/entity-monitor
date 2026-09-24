@@ -5,6 +5,8 @@ workflow acts as the backend, and GitHub Pages serves both the web app and a sta
 
 **Live site:** https://aidenlyt.github.io/entity-monitor/
 
+![Map of aircraft around London with a selected flight's trail and details panel](docs/screenshots/desktop.png)
+
 - **Live map** of aircraft in six preset regions (London, Frankfurt, New York, Los Angeles,
   Singapore, and worldwide military), rotated by heading and coloured by altitude.
 - **Search and filters**: callsign, ICAO hex, registration or type; altitude and speed bounds;
