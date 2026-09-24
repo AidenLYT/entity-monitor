@@ -1,13 +1,17 @@
 # The "backend": every run polls adsb.lol, continues trails from the live site's data,
 # and deploys the web app plus a fresh static JSON API to GitHub Pages.
+#
+# Runs chain themselves: the `next` job starts the following run about every CYCLE_SEC,
+# because GitHub often delays or skips cron runs. The cron only restarts the chain if it
+# stops. To pause collection: Actions > Collect & deploy > Disable workflow.
 name: Collect & deploy
 
 on:
   push:
     branches: [main]
   schedule:
-    # GitHub may delay scheduled runs, especially at the top of the hour.
-    - cron: '*/5 * * * *'
+    # Safety net only; see `next` below. Off the hour, when GitHub's schedulers are busiest.
+    - cron: '17,47 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -19,6 +23,10 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: false
+
+env:
+  # Target time from the start of one run to the start of the next.
+  CYCLE_SEC: 300
 
 jobs:
   build:
@@ -56,3 +64,31 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # Starts the next run, even when this one failed, so an upstream outage doesn't end the chain.
+  next:
+    needs: [build, deploy]
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Wait out the rest of the cycle
+        run: |
+          started=$(gh run view "$GITHUB_RUN_ID" --json startedAt --jq .startedAt)
+          remaining=$(( CYCLE_SEC - ($(date +%s) - $(date -d "$started" +%s)) ))
+          if [ "$remaining" -gt 0 ]; then echo "Sleeping ${remaining}s"; sleep "$remaining"; fi
+      - name: Start the next run unless one is already waiting
+        run: |
+          waiting=$(gh run list --workflow deploy.yml --limit 20 --json databaseId,status \
+            --jq "[.[] | select(.status != \"completed\" and .databaseId != $GITHUB_RUN_ID)] | length")
+          if [ "$waiting" -eq 0 ]; then
+            gh workflow run deploy.yml --ref main
+            echo "Started the next run."
+          else
+            echo "A run is already queued or running; not starting another."
+          fi
