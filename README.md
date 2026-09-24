@@ -1,12 +1,14 @@
 # Entity Monitor
 
-A live flight-monitoring dashboard that runs entirely on GitHub: a scheduled GitHub Actions
-workflow acts as the backend, and GitHub Pages serves both the web app and a static JSON API.
+A live flight-monitoring dashboard on GitHub Pages. Positions stream in every 5 seconds through
+a small Cloudflare Worker relay, and a scheduled GitHub Actions job publishes snapshots and
+history trails as a static JSON API, so the page loads instantly and keeps working without the relay.
 
 **Live site:** https://aidenlyt.github.io/entity-monitor/
 
 - **Live map** of aircraft in six preset regions (London, Frankfurt, New York, Los Angeles,
-  Singapore, and worldwide military), rotated by heading and coloured by altitude.
+  Singapore, and worldwide military), rotated by heading and coloured by altitude. Between
+  updates, aircraft glide along their track at their ground speed.
 - **Search and filters**: callsign, ICAO hex, registration or type; altitude and speed bounds;
   hide on-ground; military only; emergencies only (squawk 7500/7600/7700 or ADS-B emergency).
 - **History trails**: the selected aircraft's recent track coloured by altitude, or every
@@ -25,7 +27,9 @@ flowchart LR
   P[("Previous deploy<br/>trails.json")] -->|continue trails| C
   D --> F["GitHub Pages"]
   E --> F
-  F --> G["React + Leaflet app<br/>polls meta.json every 60 s"]
+  F --> G["React + Leaflet app"]
+  A -->|on demand, cached 5 s| R["Cloudflare Worker relay<br/>(relay/)"]
+  R -->|"live snapshot every 5 s"| G
 ```
 
 GitHub Pages can only serve static files, and adsb.lol does not allow cross-origin browser
@@ -38,10 +42,48 @@ requests, so the browser never calls the upstream API directly. Instead:
    so the repository never accumulates data commits.
 3. If a region fails upstream, the collector republishes that region's previous snapshot and
    marks it `fresh: false`, so one bad response never blanks the site.
-4. The app ([`src/`](src/)) polls `meta.json`, and fetches a region's snapshot and trails only
-   when a new deploy has landed.
+4. The app ([`src/`](src/)) draws the deployed snapshot immediately, then switches to the
+   **live relay** and polls it every 5 s while the tab is visible. It shows whichever snapshot is
+   newer, so a relay outage just falls back to the deployed data. Live positions extend the
+   deployed trails.
+5. Between updates, markers are projected forward along each aircraft's track (dead reckoning,
+   capped at 20 s) by one animation loop that moves Leaflet markers directly, so animation
+   never re-renders React.
 
 The API contract shared by both sides lives in [`shared/model.ts`](shared/model.ts).
+
+### Live relay
+
+adsb.lol blocks cross-origin requests, so browsers can't poll it directly. The relay
+([`relay/`](relay/)) is a Cloudflare Worker that fetches a region when a viewer asks for it,
+normalizes it with the collector's code, and returns it with CORS headers for the allowed origins.
+
+- **Caching:** each region is fetched upstream at most once per 5 s per Worker isolate, and
+  concurrent requests share a single upstream call. The Cache API is a no-op on `workers.dev`,
+  so the cache lives in memory.
+- **Failures:** a 429 pauses upstream calls for 15 s, and meanwhile the last good snapshot
+  (up to 10 min old) is served. If nothing usable is cached, it returns 503/502.
+- **Clock skew:** the response's `X-Snapshot-Age` header lets the browser place the data on
+  its own clock, so animation stays correct even when the viewer's clock is off.
+
+| Route | Returns |
+| --- | --- |
+| `GET /v1/regions/{id}/live` | A `Snapshot` (same shape as `latest.json`). |
+| `GET /v1/health` | `{ "ok": true }` |
+
+**Setup (one time).** [`relay.yml`](.github/workflows/relay.yml) deploys the Worker on every
+push to `main` that touches it, once these repository secrets exist:
+
+1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com), open
+   **Workers & Pages** once so it assigns you a `workers.dev` subdomain, and copy your
+   **Account ID** from that page.
+2. Go to **My Profile → API Tokens → Create Token** and use the **Edit Cloudflare Workers** template.
+3. Save both as secrets: `gh secret set CLOUDFLARE_API_TOKEN` and `gh secret set CLOUDFLARE_ACCOUNT_ID`.
+4. Run **Actions → Deploy relay → Run workflow**. Then set its URL as a repository variable,
+   e.g. `gh variable set RELAY_URL --body https://entity-monitor-relay.<subdomain>.workers.dev`.
+   The next site deploy (within ~5 min) turns live mode on.
+
+Allowed browser origins and the cache TTL are set in [`relay/wrangler.jsonc`](relay/wrangler.jsonc).
 
 ### Why flights and adsb.lol
 
@@ -72,12 +114,16 @@ npm run data:local   # fetch live data into public/api (not committed)
 npm run dev          # http://localhost:5173
 ```
 
+To develop against the live relay, run `npm run relay:dev` (serves on `http://localhost:8787`)
+and start the app with `VITE_RELAY_URL=http://localhost:8787 npm run dev`.
+
 | Script | What it does |
 | --- | --- |
 | `npm run dev` / `build` / `preview` | Vite dev server, production build, and a local preview of the build. |
 | `npm run collect -- --out dist` | Run the collector, writing the JSON API into `dist`. |
-| `npm test` | Unit tests (Vitest) for normalization, trails, collection, filters and formatting. |
-| `npm run typecheck` | TypeScript for the app and the collector. |
+| `npm run relay:dev` / `relay:deploy` / `relay:check` | Run the Worker locally, deploy it, or dry-run the bundle. |
+| `npm test` | Unit tests (Vitest) for normalization, trails, collection, the relay, motion, filters and formatting. |
+| `npm run typecheck` | TypeScript for the app, the collector and the relay. |
 
 Collector settings (environment variables): `SAMPLES` (polls per run, default 1),
 `SAMPLE_INTERVAL_SEC` (default 60), `REQUEST_GAP_SEC` (default 8) and `PREVIOUS_BASE_URL`
@@ -91,8 +137,11 @@ after that the cron keeps data current. To refresh by hand: **Actions → Collec
 
 ## Limitations
 
-- **Data is 5–15 minutes old.** GitHub runs scheduled workflows on a best-effort basis and often
-  delays them. The header shows the data's age and warns when it is over 30 minutes.
+- **Without the relay, data is 5–15 minutes old.** GitHub runs scheduled workflows on a
+  best-effort basis and often delays them. The header shows "Live" when streaming, and otherwise
+  the data's age, with a warning past 30 minutes.
+- **Relay quota:** a visible tab makes one request per 5 s (720 per hour). Cloudflare's free tier
+  allows 100,000 requests per day, about 140 viewer-hours. Hidden tabs don't poll.
 - **GitHub disables scheduled workflows after 60 days without repository activity.** Re-enable
   it from the Actions tab, or push a commit.
 - adsb.lol plans to require an API key (obtained by feeding it data) in the future. If that
