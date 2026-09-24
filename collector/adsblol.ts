@@ -11,7 +11,7 @@ export const SOURCE = {
 };
 
 const API_BASE = 'https://api.adsb.lol';
-const USER_AGENT = 'entity-monitor (+https://github.com/AidenLYT/entity-monitor)';
+const USER_AGENT = 'flight-monitor (+https://github.com/AidenLYT/flight-monitor)';
 /** The API rejects larger point radii. */
 const MAX_RADIUS_NM = 250;
 
