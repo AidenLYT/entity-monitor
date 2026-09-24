@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+# Locally collected data for `npm run dev` (published by CI, never committed)
+public/api/
+*.log
+.DS_Store
