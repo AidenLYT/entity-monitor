@@ -52,6 +52,14 @@ export function regionUrl(region: Region): string {
 
 export type FetchRegion = (region: Region) => Promise<RawResponse>;
 
+export class UpstreamError extends Error {
+  readonly status: number;
+  constructor(status: number, regionId: string) {
+    super(`adsb.lol responded ${status} for ${regionId}`);
+    this.status = status;
+  }
+}
+
 export interface FetchRegionOptions {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
@@ -80,7 +88,7 @@ export function createFetchRegion({
           await sleep(delay);
           continue;
         }
-        throw new Error(`adsb.lol responded ${res.status} for ${region.id}`);
+        throw new UpstreamError(res.status, region.id);
       }
       const body = (await res.json()) as Partial<RawResponse>;
       if (!Array.isArray(body.ac) || typeof body.now !== 'number') {
