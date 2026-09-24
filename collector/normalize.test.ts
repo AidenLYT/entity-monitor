@@ -45,6 +45,10 @@ describe('normalizeAircraft', () => {
     expect(normalizeAircraft(raw('400123'))).toBeNull();
   });
 
+  it('treats an all-placeholder callsign as missing', () => {
+    expect(normalizeAircraft({ ...raw('4cadbe'), flight: '@@@@@@@@' })?.callsign).toBeNull();
+  });
+
   it('drops fixed ground transmitters', () => {
     expect(normalizeAircraft({ hex: '42584b', r: 'TWR', t: 'TWR', alt_baro: 'ground', lat: 51.47, lon: -0.45 })).toBeNull();
   });
