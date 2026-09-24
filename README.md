@@ -71,8 +71,10 @@ normalizes it with the collector's code, and returns it with CORS headers for th
 | `GET /v1/regions/{id}/live` | A `Snapshot` (same shape as `latest.json`). |
 | `GET /v1/health` | `{ "ok": true }` |
 
-**Setup (one time).** [`relay.yml`](.github/workflows/relay.yml) deploys the Worker on every
-push to `main` that touches it, once these repository secrets exist:
+**Setup (one time).** Run `bash scripts/setup-live-relay.sh` (Git Bash on Windows). It opens each
+page, validates what you paste, stores the secrets with `gh`, deploys the relay, and turns live
+mode on. The manual equivalent: [`relay.yml`](.github/workflows/relay.yml) deploys the Worker on
+every push to `main` that touches it, once these repository secrets exist:
 
 1. Create a free account at [dash.cloudflare.com](https://dash.cloudflare.com), open
    **Workers & Pages** once so it assigns you a `workers.dev` subdomain, and copy your
