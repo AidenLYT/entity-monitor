@@ -1,0 +1,34 @@
+{
+  "ac": [
+    {
+      "hex": "4cadbe", "type": "adsb_icao", "flight": "RYR89XA ", "r": "EI-IGL", "t": "B38M",
+      "alt_baro": 20200, "alt_geom": 21200, "gs": 375.5, "track": 213.27, "true_heading": 219.38,
+      "baro_rate": 1856, "geom_rate": 1824, "squawk": "3610", "emergency": "none", "category": "A3",
+      "lat": 52.79892, "lon": -6.630707, "seen_pos": 0.213, "messages": 15743, "seen": 0.2, "rssi": -14.5
+    },
+    {
+      "hex": "4ca92d", "type": "adsb_icao", "flight": "EIN440  ", "r": "EI-DVM", "t": "A320",
+      "alt_baro": "ground", "gs": 14.8, "true_heading": 174.38, "squawk": "4722", "emergency": "none",
+      "category": "A3", "lat": 53.422929, "lon": -6.290662, "seen_pos": 0.46
+    },
+    {
+      "hex": "AE266C", "type": "adsb_icao", "flight": "C6518   ", "r": "6518", "t": "AS65", "dbFlags": 1,
+      "alt_baro": 375, "gs": 89.6, "track": 259.07, "geom_rate": 256, "squawk": "7700", "emergency": "general",
+      "category": "A7", "lat": 21.58786, "lon": -158.208518, "seen_pos": 1.968
+    },
+    { "hex": "406abc", "type": "mode_s", "alt_baro": 36000, "gs": 450, "seen": 2.1 },
+    {
+      "hex": "400123", "type": "adsb_icao", "flight": "BAW1    ", "alt_baro": 38000,
+      "lat": 51.2, "lon": -1.2, "seen_pos": 95.4
+    },
+    {
+      "hex": "~2a0b1c", "type": "tisb_trackfile", "alt_baro": 1200, "gs": 110, "track": 90,
+      "lat": 51.5, "lon": -0.1, "seen_pos": 4
+    }
+  ],
+  "msg": "No error",
+  "now": 1790227328001,
+  "total": 6,
+  "ctime": 1790227328001,
+  "ptime": 3
+}
